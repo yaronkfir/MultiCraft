@@ -9,18 +9,15 @@
 			</OnInitialized>
 			
 			<Controls>
-				<Label name="$(parent)CreationLabel" font="ZoFontKeybindStripDescription" color="C5C29E" wrapMode="ELLIPSIS" horizontalAlignment="LEFT" verticalAlignment="CENTER" text="1">
+				<Label name="$(parent)Label" font="ZoFontKeybindStripDescription" color="C5C29E" wrapMode="ELLIPSIS" horizontalAlignment="LEFT" verticalAlignment="CENTER" text="1">
 					<Anchor point="BOTTOMLEFT" offsetX="148" offsetY="-12"/>
-				</Label>
-				<Label name="$(parent)DeconstructionLabel" font="ZoFontKeybindStripDescription" color="C5C29E" wrapMode="ELLIPSIS" horizontalAlignment="LEFT" verticalAlignment="CENTER" text="1">
-					<Anchor point="BOTTOMLEFT" offsetX="310" offsetY="-12"/>
 				</Label>
 				<Slider name="$(parent)Slider" orientation="HORIZONTAL" step=1 inherits="ZO_Slider" enabled="true" mouseEnabled="true" allowDraggingFromThumb="true">
 					<Anchor point="TOP" offsetY="20" />
 					
-					<OnUpdate>
+					<OnValueChanged>
 						MultiCraft_SetSliderLabelValue()
-					</OnUpdate>
+					</OnValueChanged>
 				</Slider>
 			</Controls>
         </TopLevelControl>
