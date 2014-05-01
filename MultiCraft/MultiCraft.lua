@@ -38,7 +38,6 @@ function MultiCraft_Initialize(self)
 		MultiCraft_Create()
 	end
 	
-	-- Alchemy
 	-- Enchanting
 	-- tab change
 	ENCHANTING.RealSetEnchantingMode = ENCHANTING.SetEnchantingMode
@@ -55,7 +54,7 @@ function MultiCraft_Initialize(self)
 		MultiCraft_ResetSlider()
 	end
 	
-	-- extraction slot change?
+	-- extraction selection change
 	ENCHANTING.RealOnSlotChanged = ENCHANTING.OnSlotChanged
 	ENCHANTING.OnSlotChanged = function(...)
 		ENCHANTING.RealOnSlotChanged(...)
@@ -65,6 +64,20 @@ function MultiCraft_Initialize(self)
 	-- create and extract function
 	ENCHANTING.RealCreate = ENCHANTING.Create
 	ENCHANTING.Create = function(...)
+		MultiCraft_Create()
+	end
+	
+	-- Alchemy
+	-- selection change
+	ALCHEMY.RealOnSlotChanged = ALCHEMY.OnSlotChanged
+	ALCHEMY.OnSlotChanged = function(...)
+		ALCHEMY.RealOnSlotChanged(...)
+		MultiCraft_ResetSlider()
+	end
+	
+	-- create function
+	ALCHEMY.RealCreate = ALCHEMY.Create
+	ALCHEMY.Create = function(...)
 		MultiCraft_Create()
 	end
 	
@@ -122,17 +135,18 @@ function MultiCraft_ReplacePanelFunctions(unknown, craftSkill)
 	mc_addon.object = nil
 	
 	if craftSkill == PROVISIONING_SKILL then
-		-- grab the provisioner instance
-		if not mc_addon.object then mc_addon.object = PROVISIONER end
-		EmitMessage("MC_Addon.Object = PROVISIONER")
+		mc_addon.object = PROVISIONER
 		MultiCraft:SetHidden(false)
+		EmitMessage("MC_Addon.Object = PROVISIONER")
 	elseif craftSkill == ENCHANTING_SKILL then
-		if not mc_addon.object then mc_addon.object = ENCHANTING end
+		mc_addon.object = ENCHANTING
 		EmitMessage("MC_Addon.Object = ENCHANTING")
 	elseif craftSkill == ALCHEMY_SKILL then
+		mc_addon.object = ALCHEMY
+		MultiCraft:SetHidden(false)
+		EmitMessage("MC_Addon.Object = ALCHEMY")
 	else
-		-- grab the smithing instance
-		if not mc_addon.object then mc_addon.object = SMITHING end
+		mc_addon.object = SMITHING
 		EmitMessage("MC_Addon.Object = SMITHING")
 	end
 	
@@ -156,20 +170,14 @@ function MultiCraft_EnableOrDisableUI()
 	if not mc_addon.object then return end
 	hidden = true
 	
-	if current_craft == PROVISIONING_SKILL then
+	if current_craft == PROVISIONING_SKILL or current_craft == ALCHEMY_SKILL or current_craft == ENCHANTING_SKILL then
 		if mc_addon.object:IsCraftable() then
 			hidden = false
 		end
-	elseif current_craft == ALCHEMY_SKILL then
-		hidden = true
-	elseif current_craft == ENCHANTING_SKILL then
-		if mc_addon.object:IsCraftable() then
-			hidden = false
-		end
-	else
-	-- there is a game bug where this returns erroneously true in refinement after completing an extract that results in having less
-	-- than 10 items but still having the item selected
-	-- TODO: fix it
+	elseif SMITHING_SKILL[current_craft] ~= nil then
+-- there is a game bug where this returns erroneously true in refinement after completing an extract that results in having less
+-- than 10 items but still having the item selected
+-- TODO: fix it
 		if (mc_addon.object.mode == SMITHING_REFINEMENT_MODE and mc_addon.object.refinementPanel:IsExtractable()) or 
 		   (mc_addon.object.mode == SMITHING_CREATION_MODE and mc_addon.object.creationPanel:IsCraftable()) or
 		   (mc_addon.object.mode == SMITHING_DECONSTRUCTION_MODE and mc_addon.object.deconstructionPanel:IsExtractable()) then		   
@@ -190,7 +198,9 @@ function MultiCraft_SetLabelAnchor()
 			MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 273, -12) 
 		elseif mc_addon.object:GetEnchantingMode() == ENCHANTING_EXTRACTION_MODE then
 			MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 283, -12) 
-		end		
+		end
+	elseif current_craft == ALCHEMY_SKILL then
+		MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 273, -12)
 	elseif SMITHING_SKILLS[current_craft] ~= nil then
 		if mc_addon.object.mode == SMITHING_REFINEMENT_MODE then
 			MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 280, -12)
@@ -210,12 +220,10 @@ function MultiCraft_ResetSlider()
 	
 	EmitMessage("current craft is " .. current_craft)
 	if current_craft == PROVISIONING_SKILL then
-		data = mc_addon.object.recipeTree:GetSelectedData()
-		if data ~= nil then
+		if mc_addon.object:IsCraftable() then
+			data = mc_addon.object.recipeTree:GetSelectedData()
 			numCraftable = data.numCreatable
-		end		
-	elseif current_craft == ALCHEMY_SKILL then
-		numCraftable = 1
+		end
 	elseif current_craft == ENCHANTING_SKILL then
 		if mc_addon.object:IsCraftable() then
 			if mc_addon.object:GetEnchantingMode() == ENCHANTING_CREATION_MODE then
@@ -229,6 +237,16 @@ function MultiCraft_ResetSlider()
 				end			
 			elseif mc_addon.object:GetEnchantingMode() == ENCHANTING_EXTRACTION_MODE then
 				numCraftable = mc_addon.object.extractionSlot.craftingInventory.itemCounts[mc_addon.object.extractionSlot.itemInstanceId]
+			end
+		end
+	elseif current_craft == ALCHEMY_SKILL then
+		if mc_addon.object:IsCraftable() then
+			numCraftable = mc_addon.object.solventSlot.craftingInventory.itemCounts[mc_addon.object.solventSlot.itemInstanceId]
+			for k, v in pairs(mc_addon.object.reagentSlots) do
+				if v.craftingInventory.itemCounts[v.itemInstanceId] ~= nil then
+					numCraftable = zo_min(numCraftable, v.craftingInventory.itemCounts[v.itemInstanceId])
+					EmitMessage("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
+				end
 			end
 		end
 	elseif SMITHING_SKILLS[current_craft] ~= nil then
