@@ -1,4 +1,8 @@
-addonName, mc_addon, totalToCreate, sliderValue = 'MultiCraft', {}, 1, 1
+local addonName, totalToCreate, sliderValue = 'MultiCraft', 1, 1
+
+local mc_addon = {
+	debug = false
+}
 
 local NO_SKILL = 0
 local ENCHANTING_SKILL = 3
@@ -137,17 +141,17 @@ function MultiCraft_ReplacePanelFunctions(unknown, craftSkill)
 	if craftSkill == PROVISIONING_SKILL then
 		mc_addon.object = PROVISIONER
 		MultiCraft:SetHidden(false)
-		EmitMessage("MC_Addon.Object = PROVISIONER")
+		MultiCraft_DebugPrint("MC_Addon.Object = PROVISIONER")
 	elseif craftSkill == ENCHANTING_SKILL then
 		mc_addon.object = ENCHANTING
-		EmitMessage("MC_Addon.Object = ENCHANTING")
+		MultiCraft_DebugPrint("MC_Addon.Object = ENCHANTING")
 	elseif craftSkill == ALCHEMY_SKILL then
 		mc_addon.object = ALCHEMY
 		MultiCraft:SetHidden(false)
-		EmitMessage("MC_Addon.Object = ALCHEMY")
+		MultiCraft_DebugPrint("MC_Addon.Object = ALCHEMY")
 	else
 		mc_addon.object = SMITHING
-		EmitMessage("MC_Addon.Object = SMITHING")
+		MultiCraft_DebugPrint("MC_Addon.Object = SMITHING")
 	end
 	
 	MultiCraft_SetLabelAnchor()
@@ -162,7 +166,7 @@ function MultiCraft_Cleanup(...)
 	MultiCraft_HideUI(...)
 	mc_addon.object = nil
 	current_craft = NO_SKILL
-	EmitMessage("MC_Addon.Object = nil")
+	MultiCraft_DebugPrint("MC_Addon.Object = nil")
 	
 end
 
@@ -184,7 +188,7 @@ function MultiCraft_EnableOrDisableUI()
 			hidden = false
 		end
 	end
-	EmitMessage("hidden = " .. tostring(hidden))
+	MultiCraft_DebugPrint("hidden = " .. tostring(hidden))
 	MultiCraft:SetHidden(hidden)
 end
 
@@ -218,7 +222,7 @@ function MultiCraft_ResetSlider()
 	
 	local numCraftable = 1
 	
-	EmitMessage("current craft is " .. current_craft)
+	MultiCraft_DebugPrint("current craft is " .. current_craft)
 	if current_craft == PROVISIONING_SKILL then
 		if mc_addon.object:IsCraftable() then
 			data = mc_addon.object.recipeTree:GetSelectedData()
@@ -233,7 +237,7 @@ function MultiCraft_ResetSlider()
 					else 
 						numCraftable = zo_min(numCraftable, v.craftingInventory.itemCounts[v.itemInstanceId])
 					end
-					EmitMessage("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
+					MultiCraft_DebugPrint("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
 				end			
 			elseif mc_addon.object:GetEnchantingMode() == ENCHANTING_EXTRACTION_MODE then
 				numCraftable = mc_addon.object.extractionSlot.craftingInventory.itemCounts[mc_addon.object.extractionSlot.itemInstanceId]
@@ -245,7 +249,7 @@ function MultiCraft_ResetSlider()
 			for k, v in pairs(mc_addon.object.reagentSlots) do
 				if v.craftingInventory.itemCounts[v.itemInstanceId] ~= nil then
 					numCraftable = zo_min(numCraftable, v.craftingInventory.itemCounts[v.itemInstanceId])
-					EmitMessage("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
+					MultiCraft_DebugPrint("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
 				end
 			end
 		end
@@ -257,7 +261,7 @@ function MultiCraft_ResetSlider()
 			end
 		elseif mc_addon.object.mode == SMITHING_CREATION_MODE then
 			if mc_addon.object.creationPanel:IsCraftable() then
-				EmitMessage("SMITHING Creation")
+				MultiCraft_DebugPrint("SMITHING Creation")
 				-- determine metrics for the slider
 				patternIndex, materialIndex, materialQuantity, styleIndex, traitIndex = mc_addon.object.creationPanel:GetAllCraftingParameters()
 				materialCount = GetCurrentSmithingMaterialItemCount(patternIndex, materialIndex) / materialQuantity
@@ -277,7 +281,7 @@ function MultiCraft_ResetSlider()
 		end
 	end
 	
-	EmitMessage("numCraftable = " .. tostring(zo_floor(numCraftable)))
+	MultiCraft_DebugPrint("numCraftable = " .. tostring(zo_floor(numCraftable)))
 	MultiCraftSlider:SetValue(1)	
 	if numCraftable == 1 then
 		-- MultiCraft_SetSliderLabelValue()
@@ -293,7 +297,7 @@ function MultiCraft_SetSliderLabelValue()
 	if not mc_addon.object then return end
 	value = MultiCraftSlider:GetValue()	
 	sliderValue = value;
-	EmitMessage("sliderValue = " .. tostring(zo_floor(sliderValue)))
+	MultiCraft_DebugPrint("sliderValue = " .. tostring(zo_floor(sliderValue)))
 	MultiCraftLabel:SetText(string.format("%d", value))
 end
 
@@ -360,13 +364,8 @@ function MultiCraft_ContinueExtract(...)
 	end
 end
 
-function EmitMessage(message)
-	if (CHAT_SYSTEM) then
-		if (message == nil) then
-			message = "[nil]"
-		elseif (message == "") then
-			message = "[Empty String]"
-		end
+function MultiCraft_DebugPrint(message)
+	if mc_addon.debug == true then
 		CHAT_SYSTEM:AddMessage(message)
 	end
 end
