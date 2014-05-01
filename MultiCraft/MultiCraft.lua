@@ -9,12 +9,14 @@ SMITHING_SKILLS[1] = 1 -- blacksmithing
 SMITHING_SKILLS[2] = 2 -- clothing
 SMITHING_SKILLS[6] = 6 -- woodworking
 
+local SMITHING_REFINEMENT_MODE = 1
 local SMITHING_CREATION_MODE = 2
 local SMITHING_DECONSTRUCTION_MODE = 4
 local ENCHANTING_CREATION_MODE = 1
 local ENCHANTING_EXTRACTION_MODE = 2
 
 local current_craft = NO_SKILL
+local MIN_REFINEMENT_COUNT = 10
 
 function MultiCraft_Initialize(self)
 	self:RegisterForEvent(EVENT_CRAFTING_STATION_INTERACT, MultiCraft_ReplacePanelFunctions)
@@ -89,17 +91,30 @@ function MultiCraft_Initialize(self)
 		MultiCraft_ResetSlider()
 	end
 	
+	-- item selection in refinement
+	SMITHING.refinementPanel.RealOnSlotChanged = SMITHING.refinementPanel.OnSlotChanged
+	SMITHING.refinementPanel.OnSlotChanged = function(...)
+		SMITHING.refinementPanel.RealOnSlotChanged(...)
+		MultiCraft_ResetSlider()
+	end
+	
 	-- create function
 	SMITHING.creationPanel.RealCreate = SMITHING.creationPanel.Create
 	SMITHING.creationPanel.Create = function(...)
 		MultiCraft_Create()
 	end
 	
-	-- extract function
+	-- deconstruction extract function
 	SMITHING.deconstructionPanel.RealExtract = SMITHING.deconstructionPanel.Extract
 	SMITHING.deconstructionPanel.Extract = function(...)
 		MultiCraft_Extract()
 	end
+	
+	-- refinement extract function
+	SMITHING.refinementPanel.RealExtract = SMITHING.refinementPanel.Extract
+	SMITHING.refinementPanel.Extract = function(...)
+		MultiCraft_Extract()
+	end	
 end
 
 function MultiCraft_ReplacePanelFunctions(unknown, craftSkill)
@@ -110,12 +125,10 @@ function MultiCraft_ReplacePanelFunctions(unknown, craftSkill)
 		-- grab the provisioner instance
 		if not mc_addon.object then mc_addon.object = PROVISIONER end
 		EmitMessage("MC_Addon.Object = PROVISIONER")
-		MultiCraft:SetHidden(false)		
-		MultiCraft_SetLabelAnchor()
+		MultiCraft:SetHidden(false)
 	elseif craftSkill == ENCHANTING_SKILL then
 		if not mc_addon.object then mc_addon.object = ENCHANTING end
 		EmitMessage("MC_Addon.Object = ENCHANTING")
-		MultiCraft_SetLabelAnchor()
 	elseif craftSkill == ALCHEMY_SKILL then
 	else
 		-- grab the smithing instance
@@ -123,6 +136,7 @@ function MultiCraft_ReplacePanelFunctions(unknown, craftSkill)
 		EmitMessage("MC_Addon.Object = SMITHING")
 	end
 	
+	MultiCraft_SetLabelAnchor()
 	MultiCraft_ResetSlider()
 end
 
@@ -153,8 +167,9 @@ function MultiCraft_EnableOrDisableUI()
 			hidden = false
 		end
 	else
-		if (mc_addon.object.mode == SMITHING_CREATION_MODE and mc_addon.object.creationPanel:IsCraftable()) or
-		   (mc_addon.object.mode == SMITHING_DECONSTRUCTION_MODE and mc_addon.object.deconstructionPanel:IsExtractable()) then
+		if (mc_addon.object.mode == SMITHING_REFINEMENT_MODE and mc_addon.object.refinementPanel:IsExtractable()) or
+		   (mc_addon.object.mode == SMITHING_CREATION_MODE and mc_addon.object.creationPanel:IsCraftable()) or
+		   (mc_addon.object.mode == SMITHING_DECONSTRUCTION_MODE and mc_addon.object.deconstructionPanel:IsExtractable()) then		   
 			hidden = false
 		end
 	end
@@ -164,6 +179,7 @@ end
 
 function MultiCraft_SetLabelAnchor()
 	MultiCraftLabel:ClearAnchors()
+	
 	if current_craft == PROVISIONING_SKILL then
 		MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 148, -12) 
 	elseif current_craft == ENCHANTING_SKILL then
@@ -173,7 +189,9 @@ function MultiCraft_SetLabelAnchor()
 			MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 283, -12) 
 		end		
 	elseif SMITHING_SKILLS[current_craft] ~= nil then
-		if mc_addon.object.mode == SMITHING_CREATION_MODE then
+		if mc_addon.object.mode == SMITHING_REFINEMENT_MODE then
+			MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 280, -12)
+		elseif mc_addon.object.mode == SMITHING_CREATION_MODE then
 			MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 148, -12) 
 		elseif mc_addon.object.mode == SMITHING_DECONSTRUCTION_MODE then
 			MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 310, -12) 
@@ -211,7 +229,12 @@ function MultiCraft_ResetSlider()
 			end
 		end
 	elseif SMITHING_SKILLS[current_craft] ~= nil then
-		if mc_addon.object.mode == SMITHING_CREATION_MODE then
+		if mc_addon.object.mode == SMITHING_REFINEMENT_MODE then
+			if mc_addon.object.refinementPanel:IsExtractable() then
+				numCraftable = mc_addon.object.refinementPanel.extractionSlot.craftingInventory.itemCounts[mc_addon.object.refinementPanel.extractionSlot.itemInstanceId]
+				numCraftable = zo_floor(numCraftable / MIN_REFINEMENT_COUNT)
+			end
+		elseif mc_addon.object.mode == SMITHING_CREATION_MODE then
 			if mc_addon.object.creationPanel:IsCraftable() then
 				EmitMessage("SMITHING Creation")
 				-- determine metrics for the slider
@@ -256,7 +279,7 @@ end
 function MultiCraft_Create()
 	if SMITHING_SKILLS[current_craft] ~= nil and mc_addon.object.mode ~= SMITHING_CREATION_MODE then return end
 		
-	EVENT_MANAGER:RegisterForEvent(addonName, EVENT_CRAFT_COMPLETED, MultiCraft_ContinueCraft)
+	EVENT_MANAGER:RegisterForEvent(addonName, EVENT_CRAFT_COMPLETED, MultiCraft_ContinueCreate)
 	
 	totalToCreate = zo_floor(sliderValue)
 	
@@ -269,7 +292,7 @@ function MultiCraft_Create()
 	end
 end
 
-function MultiCraft_ContinueCraft(...)
+function MultiCraft_ContinueCreate(...)
 	totalToCreate = totalToCreate - 1
 		
 	if totalToCreate ~= 0 then
@@ -284,18 +307,32 @@ function MultiCraft_ContinueCraft(...)
 end
 
 function MultiCraft_Extract()
-	if mc_addon.object.mode ~= SMITHING_DECONSTRUCTION_MODE and mc_addon.object.deconstructionPanel:IsExtractable() == false then return end
+	if SMITHING_SKILLS[current_craft] == nil then
+		return
+	elseif (mc_addon.object.mode == SMITHING_REFINEMENT_MODE and mc_addon.object.refinementPanel:IsExtractable() == false) or
+		   (mc_addon.object.mode == SMITHING_DECONSTRUCTION_MODE and mc_addon.object.deconstructionPanel:IsExtractable() == false) then
+		return 
+	end
+	
 	EVENT_MANAGER:RegisterForEvent(addonName, EVENT_CRAFT_COMPLETED, MultiCraft_ContinueExtract)
 	
 	totalToCreate = zo_floor(sliderValue)
-	mc_addon.object.deconstructionPanel:RealExtract()
+	if mc_addon.object.mode == SMITHING_REFINEMENT_MODE then
+		mc_addon.object.refinementPanel:RealExtract()
+	elseif mc_addon.object.mode == SMITHING_DECONSTRUCTION_MODE then
+		mc_addon.object.deconstructionPanel:RealExtract()
+	end
 end
 
 function MultiCraft_ContinueExtract(...)
 	totalToCreate = totalToCreate - 1
 		
 	if totalToCreate ~= 0 then
-		mc_addon.object.deconstructionPanel:RealExtract()
+		if mc_addon.object.mode == SMITHING_REFINEMENT_MODE then
+			mc_addon.object.refinementPanel:RealExtract()
+		elseif mc_addon.object.mode == SMITHING_DECONSTRUCTION_MODE then
+			mc_addon.object.deconstructionPanel:RealExtract()
+		end
 	else
 		EVENT_MANAGER:UnregisterForEvent(addonName, EVENT_CRAFT_COMPLETED)
 		MultiCraft_ResetSlider()
