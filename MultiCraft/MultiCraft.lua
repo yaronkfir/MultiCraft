@@ -167,7 +167,10 @@ function MultiCraft_EnableOrDisableUI()
 			hidden = false
 		end
 	else
-		if (mc_addon.object.mode == SMITHING_REFINEMENT_MODE and mc_addon.object.refinementPanel:IsExtractable()) or
+	-- there is a game bug where this returns erroneously true in refinement after completing an extract that results in having less
+	-- than 10 items but still having the item selected
+	-- TODO: fix it
+		if (mc_addon.object.mode == SMITHING_REFINEMENT_MODE and mc_addon.object.refinementPanel:IsExtractable()) or 
 		   (mc_addon.object.mode == SMITHING_CREATION_MODE and mc_addon.object.creationPanel:IsCraftable()) or
 		   (mc_addon.object.mode == SMITHING_DECONSTRUCTION_MODE and mc_addon.object.deconstructionPanel:IsExtractable()) then		   
 			hidden = false
