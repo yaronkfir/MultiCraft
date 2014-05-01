@@ -178,7 +178,7 @@ function MultiCraft_EnableOrDisableUI()
 		if mc_addon.object:IsCraftable() then
 			hidden = false
 		end
-	elseif SMITHING_SKILL[current_craft] ~= nil then
+	elseif SMITHING_SKILLS[current_craft] ~= nil then
 -- there is a game bug where this returns erroneously true in refinement after completing an extract that results in having less
 -- than 10 items but still having the item selected
 -- TODO: fix it
