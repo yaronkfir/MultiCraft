@@ -1,3 +1,4 @@
+local MultiCraftAddon
 if MultiCraftAddon == nil then MultiCraftAddon = {} end
 
 MultiCraftAddon.name = "MultiCraft"
