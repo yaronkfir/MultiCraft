@@ -22,37 +22,37 @@ MultiCraftAddon.provisioner = {
 		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 148, y = -12}
 	},
 	de = {
-		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 148, y = -12}
+		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 176, y = -12}
 	},
 	fr = {
-		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 148, y = -12}
+		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 174, y = -12}
 	}
 }
 
 MultiCraftAddon.alchemy = {
 	en = {
-		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 273, y = -12}
+		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 272, y = -12}
 	},
 	de = {
-		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 273, y = -12}
+		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 331, y = -12}
 	},
 	fr = {
-		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 273, y = -12}
+		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 328, y = -12}
 	}
 }
 
 MultiCraftAddon.enchanting = {
 	en = {
-		[MultiCraftAddon.ENCHANTING_MODE_CREATION] = {x = 273, y = -12},
-		[MultiCraftAddon.ENCHANTING_MODE_EXTRACTION] = {x = 283, y = -12}
+		[MultiCraftAddon.ENCHANTING_MODE_CREATION] = {x = 272, y = -12},
+		[MultiCraftAddon.ENCHANTING_MODE_EXTRACTION] = {x = 284, y = -12}
 	},
 	de = {
-		[MultiCraftAddon.ENCHANTING_MODE_CREATION] = {x = 273, y = -12},
-		[MultiCraftAddon.ENCHANTING_MODE_EXTRACTION] = {x = 283, y = -12}
+		[MultiCraftAddon.ENCHANTING_MODE_CREATION] = {x = 331, y = -12},
+		[MultiCraftAddon.ENCHANTING_MODE_EXTRACTION] = {x = 331, y = -12}
 	},
 	fr = {
-		[MultiCraftAddon.ENCHANTING_MODE_CREATION] = {x = 273, y = -12},
-		[MultiCraftAddon.ENCHANTING_MODE_EXTRACTION] = {x = 283, y = -12}
+		[MultiCraftAddon.ENCHANTING_MODE_CREATION] = {x = 328, y = -12},
+		[MultiCraftAddon.ENCHANTING_MODE_EXTRACTION] = {x = 318, y = -12}
 	}
 }
 
@@ -63,14 +63,14 @@ MultiCraftAddon.smithing = {
 		[MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION] = {x = 310, y = -12}
 	},
 	de = {
-		[MultiCraftAddon.SMITHING_MODE_REFINEMENT] = {x = 280, y = -12},
-		[MultiCraftAddon.SMITHING_MODE_CREATION] = {x = 148, y = -12},
-		[MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION] = {x = 310, y = -12}
+		[MultiCraftAddon.SMITHING_MODE_REFINEMENT] = {x = 324, y = -12},
+		[MultiCraftAddon.SMITHING_MODE_CREATION] = {x = 176, y = -12},
+		[MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION] = {x = 331, y = -12}
 	},
 	fr = {
-		[MultiCraftAddon.SMITHING_MODE_REFINEMENT] = {x = 280, y = -12},
-		[MultiCraftAddon.SMITHING_MODE_CREATION] = {x = 148, y = -12},
-		[MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION] = {x = 310, y = -12}
+		[MultiCraftAddon.SMITHING_MODE_REFINEMENT] = {x = 320, y = -12},
+		[MultiCraftAddon.SMITHING_MODE_CREATION] = {x = 174, y = -12},
+		[MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION] = {x = 344, y = -12}
 	}
 }
 
