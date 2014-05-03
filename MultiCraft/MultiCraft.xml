@@ -4,20 +4,12 @@
             <Dimensions x="200" y="100" />
             <Anchor point="BOTTOM" />
   
-			<OnInitialized>
-				MultiCraft_Initialize(self)
-			</OnInitialized>
-			
 			<Controls>
 				<Label name="$(parent)Label" font="ZoFontKeybindStripDescription" color="C5C29E" wrapMode="ELLIPSIS" horizontalAlignment="LEFT" verticalAlignment="CENTER" text="1">
 					<Anchor point="BOTTOMLEFT" offsetX="148" offsetY="-12"/>
 				</Label>
 				<Slider name="$(parent)Slider" orientation="HORIZONTAL" step=1 inherits="ZO_Slider" enabled="true" mouseEnabled="true" allowDraggingFromThumb="true">
 					<Anchor point="TOP" offsetY="20" />
-					
-					<OnValueChanged>
-						MultiCraft_SetSliderLabelValue()
-					</OnValueChanged>
 				</Slider>
 			</Controls>
         </TopLevelControl>

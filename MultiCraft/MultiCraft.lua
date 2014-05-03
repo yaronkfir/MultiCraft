@@ -1,272 +1,224 @@
-local addonName, totalToCreate, sliderValue = 'MultiCraft', 1, 1
+if MultiCraftAddon == nil then MultiCraftAddon = {} end
 
-local mc_addon = {
-	debug = false
+MultiCraftAddon.name = "MultiCraft"
+MultiCraftAddon.version = 1.1
+
+MultiCraftAddon.debug = false
+
+MultiCraftAddon.ENCHANTING_MODE_CREATION = ENCHANTING_MODE_CREATION		-- this is globally defined by ZoS
+MultiCraftAddon.ENCHANTING_MODE_EXTRACTION = ENCHANTING_MODE_EXTRACTION -- this is globally defined by ZoS
+MultiCraftAddon.SMITHING_MODE_REFINEMENT = 1							-- Smithing ones aren't, what the crap?
+MultiCraftAddon.SMITHING_MODE_CREATION = 2
+MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION = 4
+MultiCraftAddon.GENERAL_MODE_CREATION = 1								-- it's useful to have everything act similar
+
+MultiCraftAddon.repetitions = 1
+MultiCraftAddon.sliderValue = 1
+MultiCraftAddon.isWorking = false
+
+MultiCraftAddon.provisioner = {
+	en = {
+		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 148, y = -12}
+	},
+	de = {
+		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 148, y = -12}
+	},
+	fr = {
+		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 148, y = -12}
+	}
 }
 
-local NO_SKILL = 0
-local ENCHANTING_SKILL = 3
-local ALCHEMY_SKILL = 4
-local PROVISIONING_SKILL = 5
-local SMITHING_SKILLS = {}
-SMITHING_SKILLS[1] = 1 -- blacksmithing
-SMITHING_SKILLS[2] = 2 -- clothing
-SMITHING_SKILLS[6] = 6 -- woodworking
+MultiCraftAddon.alchemy = {
+	en = {
+		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 273, y = -12}
+	},
+	de = {
+		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 273, y = -12}
+	},
+	fr = {
+		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 273, y = -12}
+	}
+}
 
-local SMITHING_REFINEMENT_MODE = 1
-local SMITHING_CREATION_MODE = 2
-local SMITHING_DECONSTRUCTION_MODE = 4
-local ENCHANTING_CREATION_MODE = 1
-local ENCHANTING_EXTRACTION_MODE = 2
+MultiCraftAddon.enchanting = {
+	en = {
+		[MultiCraftAddon.ENCHANTING_MODE_CREATION] = {x = 273, y = -12},
+		[MultiCraftAddon.ENCHANTING_MODE_EXTRACTION] = {x = 283, y = -12}
+	},
+	de = {
+		[MultiCraftAddon.ENCHANTING_MODE_CREATION] = {x = 273, y = -12},
+		[MultiCraftAddon.ENCHANTING_MODE_EXTRACTION] = {x = 283, y = -12}
+	},
+	fr = {
+		[MultiCraftAddon.ENCHANTING_MODE_CREATION] = {x = 273, y = -12},
+		[MultiCraftAddon.ENCHANTING_MODE_EXTRACTION] = {x = 283, y = -12}
+	}
+}
 
-local current_craft = NO_SKILL
-local MIN_REFINEMENT_COUNT = 10
+MultiCraftAddon.smithing = {
+	en = {
+		[MultiCraftAddon.SMITHING_MODE_REFINEMENT] = {x = 280, y = -12},
+		[MultiCraftAddon.SMITHING_MODE_CREATION] = {x = 148, y = -12},
+		[MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION] = {x = 310, y = -12}
+	},
+	de = {
+		[MultiCraftAddon.SMITHING_MODE_REFINEMENT] = {x = 280, y = -12},
+		[MultiCraftAddon.SMITHING_MODE_CREATION] = {x = 148, y = -12},
+		[MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION] = {x = 310, y = -12}
+	},
+	fr = {
+		[MultiCraftAddon.SMITHING_MODE_REFINEMENT] = {x = 280, y = -12},
+		[MultiCraftAddon.SMITHING_MODE_CREATION] = {x = 148, y = -12},
+		[MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION] = {x = 310, y = -12}
+	}
+}
 
-function MultiCraft_Initialize(self)
-	self:RegisterForEvent(EVENT_CRAFTING_STATION_INTERACT, MultiCraft_ReplacePanelFunctions)
-	self:RegisterForEvent(EVENT_CRAFT_STARTED, MultiCraft_HideUI)
-	self:RegisterForEvent(EVENT_END_CRAFTING_STATION_INTERACT, MultiCraft_Cleanup)
-	
-	-- Set up function overrides
-	-- Provisioner
-	PROVISIONER.recipeTree.RealSelectNode = PROVISIONER.recipeTree.SelectNode
-	PROVISIONER.recipeTree.SelectNode = function(...)
-		PROVISIONER.recipeTree.RealSelectNode(...)
-		
-		MultiCraft_ResetSlider()
+MultiCraftAddon.selectedCraft = nil 	-- this will hold a pointer to the currently open crafting station
+
+local function Debug(message)
+	if MultiCraftAddon.debug then
+		d(message)
 	end
-	
-	-- create function
-	PROVISIONER.RealCreate = PROVISIONER.Create
-	PROVISIONER.Create = function(...)
-		MultiCraft_Create()
-	end
-	
-	-- Enchanting
-	-- tab change
-	ENCHANTING.RealSetEnchantingMode = ENCHANTING.SetEnchantingMode
-	ENCHANTING.SetEnchantingMode = function(...)
-		ENCHANTING.RealSetEnchantingMode(...)
-		MultiCraft_SetLabelAnchor()
-		MultiCraft_ResetSlider()
-	end
-	
-	-- rune slot change
-	ENCHANTING.RealSetRuneSlotItem = ENCHANTING.SetRuneSlotItem
-	ENCHANTING.SetRuneSlotItem = function(...)
-		ENCHANTING.RealSetRuneSlotItem(...)
-		MultiCraft_ResetSlider()
-	end
-	
-	-- extraction selection change
-	ENCHANTING.RealOnSlotChanged = ENCHANTING.OnSlotChanged
-	ENCHANTING.OnSlotChanged = function(...)
-		ENCHANTING.RealOnSlotChanged(...)
-		MultiCraft_ResetSlider()
-	end
-	
-	-- create and extract function
-	ENCHANTING.RealCreate = ENCHANTING.Create
-	ENCHANTING.Create = function(...)
-		MultiCraft_Create()
-	end
-	
-	-- Alchemy
-	-- selection change
-	ALCHEMY.RealOnSlotChanged = ALCHEMY.OnSlotChanged
-	ALCHEMY.OnSlotChanged = function(...)
-		ALCHEMY.RealOnSlotChanged(...)
-		MultiCraft_ResetSlider()
-	end
-	
-	-- create function
-	ALCHEMY.RealCreate = ALCHEMY.Create
-	ALCHEMY.Create = function(...)
-		MultiCraft_Create()
-	end
-	
-	-- Smithing
-	-- tab change
-	SMITHING.RealSetMode = SMITHING.SetMode
-	SMITHING.SetMode = function(...)
-		SMITHING.RealSetMode(...)
-		MultiCraft_SetLabelAnchor()
-		MultiCraft_ResetSlider()
-	end
-	
-	-- pattern selection in creation
-	SMITHING.creationPanel.RealOnSelectedPatternChanged = SMITHING.creationPanel.OnSelectedPatternChanged
-	SMITHING.creationPanel.OnSelectedPatternChanged = function(...)
-		SMITHING.creationPanel.RealOnSelectedPatternChanged(...)
-		MultiCraft_ResetSlider()
-	end
-	
-	-- item selection in deconstruction
-	SMITHING.deconstructionPanel.RealOnSlotChanged = SMITHING.deconstructionPanel.OnSlotChanged
-	SMITHING.deconstructionPanel.OnSlotChanged = function(...)
-		SMITHING.deconstructionPanel.RealOnSlotChanged(...)
-		MultiCraft_ResetSlider()
-	end
-	
-	-- item selection in refinement
-	SMITHING.refinementPanel.RealOnSlotChanged = SMITHING.refinementPanel.OnSlotChanged
-	SMITHING.refinementPanel.OnSlotChanged = function(...)
-		SMITHING.refinementPanel.RealOnSlotChanged(...)
-		MultiCraft_ResetSlider()
-	end
-	
-	-- create function
-	SMITHING.creationPanel.RealCreate = SMITHING.creationPanel.Create
-	SMITHING.creationPanel.Create = function(...)
-		MultiCraft_Create()
-	end
-	
-	-- deconstruction extract function
-	SMITHING.deconstructionPanel.RealExtract = SMITHING.deconstructionPanel.Extract
-	SMITHING.deconstructionPanel.Extract = function(...)
-		MultiCraft_Extract()
-	end
-	
-	-- refinement extract function
-	SMITHING.refinementPanel.RealExtract = SMITHING.refinementPanel.Extract
-	SMITHING.refinementPanel.Extract = function(...)
-		MultiCraft_Extract()
-	end	
 end
 
-function MultiCraft_ReplacePanelFunctions(unknown, craftSkill)
-	current_craft = craftSkill
-	mc_addon.object = nil
-	
-	if craftSkill == PROVISIONING_SKILL then
-		mc_addon.object = PROVISIONER
-		MultiCraft:SetHidden(false)
-		MultiCraft_DebugPrint("MC_Addon.Object = PROVISIONER")
-	elseif craftSkill == ENCHANTING_SKILL then
-		mc_addon.object = ENCHANTING
-		MultiCraft_DebugPrint("MC_Addon.Object = ENCHANTING")
-	elseif craftSkill == ALCHEMY_SKILL then
-		mc_addon.object = ALCHEMY
-		MultiCraft:SetHidden(false)
-		MultiCraft_DebugPrint("MC_Addon.Object = ALCHEMY")
-	else
-		mc_addon.object = SMITHING
-		MultiCraft_DebugPrint("MC_Addon.Object = SMITHING")
-	end
-	
-	MultiCraft_SetLabelAnchor()
-	MultiCraft_ResetSlider()
+local function GetClientLanguage()
+	local language = GetCVar("language.2")
+	if MultiCraftAddon.selectedCraft[language] then return language end
+	return "en"
 end
 
-function MultiCraft_HideUI(...)
+function MultiCraftAddon.SelectCraftingSkill(eventId, craftingType, sameStation)
+	if craftingType == CRAFTING_TYPE_PROVISIONING then
+		MultiCraftAddon.selectedCraft = MultiCraftAddon.provisioner
+		MultiCraft:SetHidden(false)
+		Debug("Selected Provisioner")
+	elseif craftingType == CRAFTING_TYPE_ENCHANTING then
+		MultiCraftAddon.selectedCraft = MultiCraftAddon.enchanting
+		Debug("Selected Enchanting")
+	elseif craftingType == CRAFTING_TYPE_ALCHEMY then
+		MultiCraftAddon.selectedCraft = MultiCraftAddon.alchemy
+		MultiCraft:SetHidden(false)
+		Debug("Selected Alchemy")
+	elseif craftingType ~= CRAFTING_TYPE_INVALID then
+		MultiCraftAddon.selectedCraft = MultiCraftAddon.smithing
+		Debug("Selected Smithing")
+	end
+	
+	MultiCraftAddon:SetLabelAnchor()
+	MultiCraftAddon:ResetSlider()
+end
+
+function MultiCraftAddon.HideUI(...)
 	MultiCraft:SetHidden(true)
 end
 
-function MultiCraft_Cleanup(...)
-	MultiCraft_HideUI(...)
-	mc_addon.object = nil
-	current_craft = NO_SKILL
-	MultiCraft_DebugPrint("MC_Addon.Object = nil")
-	
+function MultiCraftAddon.Cleanup(...)
+	MultiCraftAddon.HideUI(...)
+	MultiCraftAddon.selectedCraft = nil
+	Debug("Cleaned")
 end
 
-function MultiCraft_EnableOrDisableUI()
-	if not mc_addon.object then return end
-	hidden = true
+function MultiCraftAddon:EnableOrDisableUI()
+	Debug("EnableOrDisableUI()")
+	local hidden = true
 	
-	if current_craft == PROVISIONING_SKILL or current_craft == ALCHEMY_SKILL or current_craft == ENCHANTING_SKILL then
-		if mc_addon.object:IsCraftable() then
+	local mode = MultiCraftAddon.selectedCraft:GetMode()
+	if MultiCraftAddon.selectedCraft == MultiCraftAddon.provisioner or
+	   MultiCraftAddon.selectedCraft == MultiCraftAddon.alchemy then
+		if MultiCraftAddon.selectedCraft:IsCraftable() then
 			hidden = false
 		end
-	elseif SMITHING_SKILLS[current_craft] ~= nil then
+	elseif MultiCraftAddon.selectedCraft == MultiCraftAddon.enchanting then
+		if (mode == MultiCraftAddon.ENCHANTING_MODE_CREATION and MultiCraftAddon.selectedCraft:IsCraftable()) or
+		   (mode == MultiCraftAddon.ENCHANTING_MODE_EXTRACTION and MultiCraftAddon.selectedCraft:IsExtractable()) then
+			hidden = false
+		end
+	elseif MultiCraftAddon.selectedCraft == MultiCraftAddon.smithing then
 -- there is a game bug where this returns erroneously true in refinement after completing an extract that results in having less
 -- than 10 items but still having the item selected
 -- TODO: fix it
-		if (mc_addon.object.mode == SMITHING_REFINEMENT_MODE and mc_addon.object.refinementPanel:IsExtractable()) or 
-		   (mc_addon.object.mode == SMITHING_CREATION_MODE and mc_addon.object.creationPanel:IsCraftable()) or
-		   (mc_addon.object.mode == SMITHING_DECONSTRUCTION_MODE and mc_addon.object.deconstructionPanel:IsExtractable()) then		   
+		if (mode == MultiCraftAddon.SMITHING_MODE_REFINEMENT and MultiCraftAddon.selectedCraft:IsExtractable()) or
+		   (mode == MultiCraftAddon.SMITHING_MODE_CREATION and MultiCraftAddon.selectedCraft:IsCraftable()) or
+		   (mode == MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION and MultiCraftAddon.selectedCraft:IsDeconstructable()) then
 			hidden = false
 		end
 	end
-	MultiCraft_DebugPrint("hidden = " .. tostring(hidden))
+	Debug("hidden = " .. tostring(hidden))
 	MultiCraft:SetHidden(hidden)
 end
 
-function MultiCraft_SetLabelAnchor()
+function MultiCraftAddon:SetLabelAnchor()
+	if not MultiCraftAddon.selectedCraft then return end
 	MultiCraftLabel:ClearAnchors()
 	
-	if current_craft == PROVISIONING_SKILL then
-		MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 148, -12) 
-	elseif current_craft == ENCHANTING_SKILL then
-		if mc_addon.object:GetEnchantingMode() == ENCHANTING_CREATION_MODE then
-			MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 273, -12) 
-		elseif mc_addon.object:GetEnchantingMode() == ENCHANTING_EXTRACTION_MODE then
-			MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 283, -12) 
-		end
-	elseif current_craft == ALCHEMY_SKILL then
-		MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 273, -12)
-	elseif SMITHING_SKILLS[current_craft] ~= nil then
-		if mc_addon.object.mode == SMITHING_REFINEMENT_MODE then
-			MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 280, -12)
-		elseif mc_addon.object.mode == SMITHING_CREATION_MODE then
-			MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 148, -12) 
-		elseif mc_addon.object.mode == SMITHING_DECONSTRUCTION_MODE then
-			MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, 310, -12) 
-		end
+	local language = GetClientLanguage()
+	local mode = MultiCraftAddon.selectedCraft:GetMode()
+	
+	if MultiCraftAddon.selectedCraft[language][mode] then
+		MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, MultiCraftAddon.selectedCraft[language][mode].x, MultiCraftAddon.selectedCraft[language][mode].y)
 	end
 end
 
-function MultiCraft_ResetSlider()
-	if not mc_addon.object then return end
-	MultiCraft_EnableOrDisableUI()
-	
+function MultiCraftAddon.SetLabelAndValue(...)
+	MultiCraftAddon.sliderValue = zo_floor(MultiCraftSlider:GetValue())
+	Debug("sliderValue = " .. tostring(MultiCraftAddon.sliderValue))
+	MultiCraftLabel:SetText(string.format("%d", MultiCraftAddon.sliderValue))
+end
+
+function MultiCraftAddon:ResetSlider()
+	Debug("ResetSlider()")
+	if not MultiCraftAddon.selectedCraft then return end
+	MultiCraftAddon:EnableOrDisableUI()
+		
 	local numCraftable = 1
+	local mode = MultiCraftAddon.selectedCraft:GetMode()
 	
-	MultiCraft_DebugPrint("current craft is " .. current_craft)
-	if current_craft == PROVISIONING_SKILL then
-		if mc_addon.object:IsCraftable() then
-			data = mc_addon.object.recipeTree:GetSelectedData()
+	if MultiCraftAddon.selectedCraft == MultiCraftAddon.provisioner then
+		if MultiCraftAddon.selectedCraft:IsCraftable() then
+			local data = PROVISIONER.recipeTree:GetSelectedData()
 			numCraftable = data.numCreatable
 		end
-	elseif current_craft == ENCHANTING_SKILL then
-		if mc_addon.object:IsCraftable() then
-			if mc_addon.object:GetEnchantingMode() == ENCHANTING_CREATION_MODE then
-				for k, v in pairs(mc_addon.object.runeSlots) do
+	elseif MultiCraftAddon.selectedCraft == MultiCraftAddon.enchanting then
+		if mode == MultiCraftAddon.ENCHANTING_MODE_CREATION then
+			if MultiCraftAddon.selectedCraft:IsCraftable() then
+				for k, v in pairs(ENCHANTING.runeSlots) do
 					if k == 1 then
 						numCraftable = v.craftingInventory.itemCounts[v.itemInstanceId]
 					else 
 						numCraftable = zo_min(numCraftable, v.craftingInventory.itemCounts[v.itemInstanceId])
 					end
-					MultiCraft_DebugPrint("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
+					Debug("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
 				end			
-			elseif mc_addon.object:GetEnchantingMode() == ENCHANTING_EXTRACTION_MODE then
-				numCraftable = mc_addon.object.extractionSlot.craftingInventory.itemCounts[mc_addon.object.extractionSlot.itemInstanceId]
+			end
+		elseif mode == MultiCraftAddon.ENCHANTING_MODE_EXTRACTION then
+			if MultiCraftAddon.selectedCraft:IsExtractable() then
+				numCraftable = ENCHANTING.extractionSlot.craftingInventory.itemCounts[ENCHANTING.extractionSlot.itemInstanceId]
 			end
 		end
-	elseif current_craft == ALCHEMY_SKILL then
-		if mc_addon.object:IsCraftable() then
-			numCraftable = mc_addon.object.solventSlot.craftingInventory.itemCounts[mc_addon.object.solventSlot.itemInstanceId]
-			for k, v in pairs(mc_addon.object.reagentSlots) do
+	elseif MultiCraftAddon.selectedCraft == MultiCraftAddon.alchemy then
+		if MultiCraftAddon.selectedCraft:IsCraftable() then
+			numCraftable = ALCHEMY.solventSlot.craftingInventory.itemCounts[ALCHEMY.solventSlot.itemInstanceId]
+			for k, v in pairs(ALCHEMY.reagentSlots) do
 				if v.craftingInventory.itemCounts[v.itemInstanceId] ~= nil then
 					numCraftable = zo_min(numCraftable, v.craftingInventory.itemCounts[v.itemInstanceId])
-					MultiCraft_DebugPrint("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
+					Debug("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
 				end
 			end
 		end
-	elseif SMITHING_SKILLS[current_craft] ~= nil then
-		if mc_addon.object.mode == SMITHING_REFINEMENT_MODE then
-			if mc_addon.object.refinementPanel:IsExtractable() then
-				numCraftable = mc_addon.object.refinementPanel.extractionSlot.craftingInventory.itemCounts[mc_addon.object.refinementPanel.extractionSlot.itemInstanceId]
-				numCraftable = zo_floor(numCraftable / MIN_REFINEMENT_COUNT)
+	elseif MultiCraftAddon.selectedCraft == MultiCraftAddon.smithing then
+		if mode == MultiCraftAddon.SMITHING_MODE_REFINEMENT then
+			if MultiCraftAddon.selectedCraft:IsExtractable() then
+				numCraftable = SMITHING.refinementPanel.extractionSlot.craftingInventory.itemCounts[SMITHING.refinementPanel.extractionSlot.itemInstanceId]
+				numCraftable = zo_floor(numCraftable / GetRequiredSmithingRefinementStackSize())
 			end
-		elseif mc_addon.object.mode == SMITHING_CREATION_MODE then
-			if mc_addon.object.creationPanel:IsCraftable() then
-				MultiCraft_DebugPrint("SMITHING Creation")
+		elseif mode == MultiCraftAddon.SMITHING_MODE_CREATION then
+			if MultiCraftAddon.selectedCraft:IsCraftable() then
+				Debug("SMITHING Creation")
 				-- determine metrics for the slider
-				patternIndex, materialIndex, materialQuantity, styleIndex, traitIndex = mc_addon.object.creationPanel:GetAllCraftingParameters()
-				materialCount = GetCurrentSmithingMaterialItemCount(patternIndex, materialIndex) / materialQuantity
-				styleItemCount = GetCurrentSmithingStyleItemCount(styleIndex)
-				traitCount = GetCurrentSmithingTraitItemCount(traitIndex)
+				local patternIndex, materialIndex, materialQuantity, styleIndex, traitIndex = SMITHING.creationPanel:GetAllCraftingParameters()
+				local materialCount = GetCurrentSmithingMaterialItemCount(patternIndex, materialIndex) / materialQuantity
+				local styleItemCount = GetCurrentSmithingStyleItemCount(styleIndex)
+				local traitCount = GetCurrentSmithingTraitItemCount(traitIndex)
 				
 				numCraftable = zo_min(materialCount, styleItemCount)
 				
@@ -274,98 +226,214 @@ function MultiCraft_ResetSlider()
 					numCraftable = zo_min(numCraftable, traitCount)
 				end
 			end
-		elseif mc_addon.object.mode == SMITHING_DECONSTRUCTION_MODE then
-			if mc_addon.object.deconstructionPanel:IsExtractable() then
-				numCraftable = mc_addon.object.deconstructionPanel.extractionSlot.craftingInventory.itemCounts[mc_addon.object.deconstructionPanel.extractionSlot.itemInstanceId]
+		elseif mode == MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION then
+			if MultiCraftAddon.selectedCraft:IsDeconstructable() then
+				numCraftable = SMITHING.deconstructionPanel.extractionSlot.craftingInventory.itemCounts[SMITHING.deconstructionPanel.extractionSlot.itemInstanceId]
 			end
 		end
 	end
 	
-	MultiCraft_DebugPrint("numCraftable = " .. tostring(zo_floor(numCraftable)))
+	Debug("numCraftable = " .. tostring(zo_floor(numCraftable)))
 	MultiCraftSlider:SetValue(1)	
+	numCraftable = zo_floor(numCraftable)
 	if numCraftable == 1 then
-		-- MultiCraft_SetSliderLabelValue()
+		Debug("Hide slider")
 		MultiCraftSlider:SetHidden(true)
-		-- MultiCraftLabel:SetText(string.format("%d", numCraftable))
 	else
+		Debug("Show slider")
 		MultiCraftSlider:SetHidden(false)
-		MultiCraftSlider:SetMinMax(1, zo_floor(numCraftable))
+		MultiCraftSlider:SetMinMax(1, numCraftable)
 	end
 end
 
-function MultiCraft_SetSliderLabelValue()
-	if not mc_addon.object then return end
-	value = MultiCraftSlider:GetValue()	
-	sliderValue = value;
-	MultiCraft_DebugPrint("sliderValue = " .. tostring(zo_floor(sliderValue)))
-	MultiCraftLabel:SetText(string.format("%d", value))
-end
-
-function MultiCraft_Create()
-	if SMITHING_SKILLS[current_craft] ~= nil and mc_addon.object.mode ~= SMITHING_CREATION_MODE then return end
-		
-	EVENT_MANAGER:RegisterForEvent(addonName, EVENT_CRAFT_COMPLETED, MultiCraft_ContinueCreate)
+function MultiCraftAddon:Work(workFunc)
+	Debug("work called")
 	
-	totalToCreate = zo_floor(sliderValue)
-	
-	if SMITHING_SKILLS[current_craft] ~= nil then
-		if not mc_addon.object.creationPanel:IsCraftable() then return end
-		mc_addon.object.creationPanel:RealCreate()
-	else 
-		if not mc_addon.object:IsCraftable() then return end
-		mc_addon.object:RealCreate()
+	if not MultiCraftAddon.isWorking then
+		MultiCraftAddon.isWorking = true
+		EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'CraftComplete', EVENT_CRAFT_COMPLETED, function() MultiCraftAddon:ContinueWork(workFunc) end)
+		MultiCraftAddon.repetitions = MultiCraftAddon.sliderValue - 1
 	end
 end
 
-function MultiCraft_ContinueCreate(...)
-	totalToCreate = totalToCreate - 1
-		
-	if totalToCreate ~= 0 then
-		if SMITHING_SKILLS[current_craft] ~= nil then
-			mc_addon.object.creationPanel:RealCreate()
-		else
-			mc_addon.object:RealCreate()
-		end
+function MultiCraftAddon:ContinueWork(workFunc)
+	Debug("continue work called")
+	
+	if MultiCraftAddon.repetitions > 0 then
+		MultiCraftAddon.repetitions = MultiCraftAddon.repetitions - 1
+		workFunc()
 	else
-		EVENT_MANAGER:UnregisterForEvent(addonName, EVENT_CRAFT_COMPLETED)
+		EVENT_MANAGER:UnregisterForEvent(MultiCraftAddon.name .. 'CraftComplete', EVENT_CRAFT_COMPLETED)
+		MultiCraftAddon.isWorking = false
+		MultiCraftAddon:ResetSlider()
 	end
 end
 
-function MultiCraft_Extract()
-	if SMITHING_SKILLS[current_craft] == nil then
-		return
-	elseif (mc_addon.object.mode == SMITHING_REFINEMENT_MODE and mc_addon.object.refinementPanel:IsExtractable() == false) or
-		   (mc_addon.object.mode == SMITHING_DECONSTRUCTION_MODE and mc_addon.object.deconstructionPanel:IsExtractable() == false) then
-		return 
+local function Initialize(eventCode, addonName)
+	if addonName ~= MultiCraftAddon.name then return end
+	
+	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'Interact',		EVENT_CRAFTING_STATION_INTERACT, 		MultiCraftAddon.SelectCraftingSkill)
+	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'Craft',			EVENT_CRAFT_STARTED, 					MultiCraftAddon.HideUI)
+	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'EndInteract', 	EVENT_END_CRAFTING_STATION_INTERACT, 	MultiCraftAddon.Cleanup)
+	
+	-- Set up function overrides
+	-- Provisioner
+	MultiCraftAddon.provisioner.SelectNode = PROVISIONER.recipeTree.SelectNode
+	PROVISIONER.recipeTree.SelectNode = function(...)
+		MultiCraftAddon.provisioner.SelectNode(...)
+		MultiCraftAddon:ResetSlider()
 	end
 	
-	EVENT_MANAGER:RegisterForEvent(addonName, EVENT_CRAFT_COMPLETED, MultiCraft_ContinueExtract)
-	
-	totalToCreate = zo_floor(sliderValue)
-	if mc_addon.object.mode == SMITHING_REFINEMENT_MODE then
-		mc_addon.object.refinementPanel:RealExtract()
-	elseif mc_addon.object.mode == SMITHING_DECONSTRUCTION_MODE then
-		mc_addon.object.deconstructionPanel:RealExtract()
+	-- create function
+	MultiCraftAddon.provisioner.Create = function()
+		PROVISIONER:Create()
 	end
-end
-
-function MultiCraft_ContinueExtract(...)
-	totalToCreate = totalToCreate - 1
+	
+	-- for polymorphism
+	MultiCraftAddon.provisioner.GetMode = function(...)
+		return MultiCraftAddon.GENERAL_MODE_CREATION
+	end
+	
+	-- wrapper to check if an item is craftable
+	MultiCraftAddon.provisioner.IsCraftable = function(...)
+		return PROVISIONER:IsCraftable()
+	end
+	
+	-- Enchanting
+	-- tab change
+	MultiCraftAddon.enchanting.SetEnchantingMode = ENCHANTING.SetEnchantingMode
+	ENCHANTING.SetEnchantingMode = function(...)
+		MultiCraftAddon.enchanting.SetEnchantingMode(...)
+		MultiCraftAddon:SetLabelAnchor()
+		MultiCraftAddon:ResetSlider()
+	end
+	
+	-- for polymorphism
+	MultiCraftAddon.enchanting.GetMode = function(...)
+		return ENCHANTING:GetEnchantingMode()
+	end
+	
+	-- rune slot change
+	MultiCraftAddon.enchanting.SetRuneSlotItem = ENCHANTING.SetRuneSlotItem
+	ENCHANTING.SetRuneSlotItem = function(...)
+		MultiCraftAddon.enchanting.SetRuneSlotItem(...)
+		MultiCraftAddon:ResetSlider()
+	end
+	
+	-- extraction selection change
+	MultiCraftAddon.enchanting.OnSlotChanged = ENCHANTING.OnSlotChanged
+	ENCHANTING.OnSlotChanged = function(...)
+		MultiCraftAddon.enchanting.OnSlotChanged(...)
+		MultiCraftAddon:ResetSlider()
+	end
+	
+	-- create and extract function
+	MultiCraftAddon.enchanting.Create = function()
+		ENCHANTING:Create()
+	end
 		
-	if totalToCreate ~= 0 then
-		if mc_addon.object.mode == SMITHING_REFINEMENT_MODE then
-			mc_addon.object.refinementPanel:RealExtract()
-		elseif mc_addon.object.mode == SMITHING_DECONSTRUCTION_MODE then
-			mc_addon.object.deconstructionPanel:RealExtract()
-		end
-	else
-		EVENT_MANAGER:UnregisterForEvent(addonName, EVENT_CRAFT_COMPLETED)
-		MultiCraft_ResetSlider()
+	-- wrapper to check if an item is craftable
+	MultiCraftAddon.enchanting.IsCraftable = function(...)
+		return ENCHANTING:IsCraftable()
 	end
+	
+	MultiCraftAddon.enchanting.IsExtractable = MultiCraftAddon.enchanting.IsCraftable
+	
+	-- Alchemy
+	-- selection change
+	MultiCraftAddon.alchemy.OnSlotChanged = ALCHEMY.OnSlotChanged
+	ALCHEMY.OnSlotChanged = function(...)
+		MultiCraftAddon.alchemy.OnSlotChanged(...)
+		MultiCraftAddon:ResetSlider()
+	end
+	
+	-- create function
+	MultiCraftAddon.alchemy.Create = function()
+		ALCHEMY:Create()
+	end
+	
+	-- for polymorphism
+	MultiCraftAddon.alchemy.GetMode = function(...)
+		return MultiCraftAddon.GENERAL_MODE_CREATION
+	end
+	
+	-- wrapper to check if an item is craftable
+	MultiCraftAddon.alchemy.IsCraftable = function(...)
+		return ALCHEMY:IsCraftable()
+	end
+	
+	-- Smithing
+	-- tab change
+	MultiCraftAddon.smithing.SetMode = SMITHING.SetMode
+	SMITHING.SetMode = function(...)
+		MultiCraftAddon.smithing.SetMode(...)
+		MultiCraftAddon:SetLabelAnchor()
+		MultiCraftAddon:ResetSlider()
+	end
+	
+	-- for polymorphism
+	MultiCraftAddon.smithing.GetMode = function(...)
+		return SMITHING.mode
+	end
+	
+	-- pattern selection in creation
+	MultiCraftAddon.smithing.OnSelectedPatternChanged = SMITHING.OnSelectedPatternChanged
+	SMITHING.OnSelectedPatternChanged = function(...)
+		MultiCraftAddon.smithing.OnSelectedPatternChanged(...)
+		MultiCraftAddon:ResetSlider()
+	end
+	
+	-- item selection in deconstruction
+	MultiCraftAddon.smithing.OnExtractionSlotChanged = SMITHING.OnExtractionSlotChanged
+	SMITHING.OnExtractionSlotChanged = function(...)
+		MultiCraftAddon.smithing.OnExtractionSlotChanged(...)
+		MultiCraftAddon:ResetSlider()
+	end
+		
+	-- create function
+	MultiCraftAddon.smithing.Create = function()
+		SMITHING.creationPanel:Create()
+	end
+	
+		
+	-- wrapper to check if an item is craftable
+	MultiCraftAddon.smithing.IsCraftable = function(...)
+		return SMITHING.creationPanel:IsCraftable()
+	end
+		
+	-- deconstruction extract function
+	MultiCraftAddon.smithing.Deconstruct = function()
+		SMITHING.deconstructionPanel:Extract()
+	end
+
+		
+	-- wrapper to check if an item is deconstructable
+	MultiCraftAddon.smithing.IsDeconstructable = function(...)
+		return SMITHING.deconstructionPanel:IsExtractable()
+	end
+	
+	-- refinement extract function
+	MultiCraftAddon.smithing.Extract = function()
+		SMITHING.refinementPanel:Extract()
+	end
+	
+	-- wrapper to check if an item is refinable
+	MultiCraftAddon.smithing.IsExtractable = function(...)
+		return SMITHING.refinementPanel:IsExtractable()
+	end
+
+	-- hook everything up
+	ZO_PreHook(PROVISIONER, 'Create', function() MultiCraftAddon:Work(MultiCraftAddon.provisioner.Create) end)
+	ZO_PreHook(ENCHANTING, 'Create', function() MultiCraftAddon:Work(MultiCraftAddon.enchanting.Create) end)
+	ZO_PreHook(ALCHEMY, 'Create', function() MultiCraftAddon:Work(MultiCraftAddon.alchemy.Create) end)
+	ZO_PreHook(SMITHING.creationPanel, 'Create', function() MultiCraftAddon:Work(MultiCraftAddon.smithing.Create) end)
+	ZO_PreHook(SMITHING.deconstructionPanel, 'Extract', function() MultiCraftAddon:Work(MultiCraftAddon.smithing.Deconstruct) end)
+	ZO_PreHook(SMITHING.refinementPanel, 'Extract', function() MultiCraftAddon:Work(MultiCraftAddon.smithing.Extract) end)
+	
+	-- slider
+	MultiCraftSlider:SetHandler("OnValueChanged", MultiCraftAddon.SetLabelAndValue)
+	
+	EVENT_MANAGER:UnregisterForEvent(MultiCraftAddon.name .. 'loaded', EVENT_ADD_ON_LOADED)
 end
 
-function MultiCraft_DebugPrint(message)
-	if mc_addon.debug == true then
-		CHAT_SYSTEM:AddMessage(message)
-	end
-end
+EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'loaded', EVENT_ADD_ON_LOADED, Initialize)
