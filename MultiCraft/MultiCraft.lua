@@ -8,17 +8,20 @@ MultiCraftAddon.debug = false
 
 MultiCraftAddon.settings = {
 	sliderDefault = false,
-	traitsEnabled = true
+	traitsEnabled = true,
+	callDelay = 500
 }
 
 -- register SIs
 SI.USAGE_1		= "SI_USAGE_1"
 SI.USAGE_2		= "SI_USAGE_2"
 SI.USAGE_3		= "SI_USAGE_3"
+SI.USAGE_4		= "SI_USAGE_4"
 SI.DEFAULT_MAX	= "SI_DEFAULT_MAX"
 SI.DEFAULT_MIN	= "SI_DEFAULT_MIN"
 SI.TRAITS_ON	= "SI_TRAITS_ON"
 SI.TRAITS_OFF	= "SI_TRAITS_OFF"
+SI.CALL_DELAY	= "SI_CALL_DELAY"
 
 -- utility functions
 function SI.get(key, n)
@@ -129,7 +132,11 @@ local function ToggleTraits()
 		d(SI.get(SI.TRAITS_OFF))
 	end
 end
-	
+
+local function SetCallDelay(number)
+	MultiCraftAddon.settings.callDelay = number
+end
+
 function MultiCraftAddon.SelectCraftingSkill(eventId, craftingType, sameStation)
 	if craftingType == CRAFTING_TYPE_PROVISIONING then
 		MultiCraftAddon.selectedCraft = MultiCraftAddon.provisioner
@@ -313,7 +320,7 @@ function MultiCraftAddon:ContinueWork(workFunc)
 	
 	if MultiCraftAddon.repetitions > 0 then
 		MultiCraftAddon.repetitions = MultiCraftAddon.repetitions - 1
-		workFunc()
+		zo_callLater(workFunc, MultiCraftAddon.settings.callDelay)
 	else
 		EVENT_MANAGER:UnregisterForEvent(MultiCraftAddon.name .. 'CraftComplete', EVENT_CRAFT_COMPLETED)
 		MultiCraftAddon.isWorking = false
@@ -507,10 +514,16 @@ local function CommandHandler(text)
 	elseif cmd[1] == "trait" then
 		ToggleTraits()
 		MultiCraftAddon:ResetSlider()
+	elseif cmd[1] == "delay" then
+		if tonumber(cmd[2]) ~= nil then
+			SetCallDelay(zo_floor(tonumber(cmd[2])))
+		end
+		d(string.format(SI.get(SI.CALL_DELAY), MultiCraftAddon.settings.callDelay))
 	else
 		d(SI.get(SI.USAGE_1))
 		d(SI.get(SI.USAGE_2))
 		d(SI.get(SI.USAGE_3))
+		d(SI.get(SI.USAGE_4))
 	end
 end
 
