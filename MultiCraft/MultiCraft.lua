@@ -1,10 +1,32 @@
-local MultiCraftAddon
+local SI = {}
 if MultiCraftAddon == nil then MultiCraftAddon = {} end
 
 MultiCraftAddon.name = "MultiCraft"
-MultiCraftAddon.version = 1.1
+MultiCraftAddon.version = 1.2
 
 MultiCraftAddon.debug = false
+
+MultiCraftAddon.settings = {
+	sliderDefault = false,
+	traitsEnabled = true
+}
+
+-- register SIs
+SI.USAGE_1		= "SI_USAGE_1"
+SI.USAGE_2		= "SI_USAGE_2"
+SI.USAGE_3		= "SI_USAGE_3"
+SI.DEFAULT_MAX	= "SI_DEFAULT_MAX"
+SI.DEFAULT_MIN	= "SI_DEFAULT_MIN"
+SI.TRAITS_ON	= "SI_TRAITS_ON"
+SI.TRAITS_OFF	= "SI_TRAITS_OFF"
+
+-- utility functions
+function SI.get(key, n)
+    assert(key ~= nil)
+    return assert(GetString(_G[key], n))
+end
+
+MultiCraftAddon.SI = SI
 
 MultiCraftAddon.ENCHANTING_MODE_CREATION = ENCHANTING_MODE_CREATION		-- this is globally defined by ZoS
 MultiCraftAddon.ENCHANTING_MODE_EXTRACTION = ENCHANTING_MODE_EXTRACTION -- this is globally defined by ZoS
@@ -88,6 +110,26 @@ local function GetClientLanguage()
 	return "en"
 end
 
+local function ToggleSliderDefault()
+	MultiCraftAddon.settings.sliderDefault = not MultiCraftAddon.settings.sliderDefault
+	
+	if MultiCraftAddon.settings.sliderDefault then
+		d(SI.get(SI.DEFAULT_MAX))
+	else
+		d(SI.get(SI.DEFAULT_MIN))
+	end
+end
+
+local function ToggleTraits()
+	MultiCraftAddon.settings.traitsEnabled = not MultiCraftAddon.settings.traitsEnabled
+	
+	if MultiCraftAddon.settings.traitsEnabled then
+		d(SI.get(SI.TRAITS_ON))
+	else
+		d(SI.get(SI.TRAITS_OFF))
+	end
+end
+	
 function MultiCraftAddon.SelectCraftingSkill(eventId, craftingType, sameStation)
 	if craftingType == CRAFTING_TYPE_PROVISIONING then
 		MultiCraftAddon.selectedCraft = MultiCraftAddon.provisioner
@@ -224,7 +266,11 @@ function MultiCraftAddon:ResetSlider()
 				numCraftable = zo_min(materialCount, styleItemCount)
 				
 				if traitIndex ~= 1 then
-					numCraftable = zo_min(numCraftable, traitCount)
+					if MultiCraftAddon.settings.traitsEnabled then
+						numCraftable = zo_min(numCraftable, traitCount)
+					else
+						numCraftable = 1
+					end
 				end
 			end
 		elseif mode == MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION then
@@ -235,7 +281,6 @@ function MultiCraftAddon:ResetSlider()
 	end
 	
 	Debug("numCraftable = " .. tostring(zo_floor(numCraftable)))
-	MultiCraftSlider:SetValue(1)	
 	numCraftable = zo_floor(numCraftable)
 	if numCraftable == 1 then
 		Debug("Hide slider")
@@ -244,6 +289,12 @@ function MultiCraftAddon:ResetSlider()
 		Debug("Show slider")
 		MultiCraftSlider:SetHidden(false)
 		MultiCraftSlider:SetMinMax(1, numCraftable)
+	end
+	
+	if MultiCraftAddon.settings.sliderDefault then
+		MultiCraftSlider:SetValue(numCraftable)
+	else
+		MultiCraftSlider:SetValue(1)
 	end
 end
 
@@ -272,6 +323,7 @@ end
 
 local function Initialize(eventCode, addonName)
 	if addonName ~= MultiCraftAddon.name then return end
+	MultiCraftAddon.settings = ZO_SavedVars:NewAccountWide(MultiCraftAddon.name .. 'SV', 1, nil, MultiCraftAddon.settings)
 	
 	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'Interact',		EVENT_CRAFTING_STATION_INTERACT, 		MultiCraftAddon.SelectCraftingSkill)
 	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'Craft',			EVENT_CRAFT_STARTED, 					MultiCraftAddon.HideUI)
@@ -436,5 +488,33 @@ local function Initialize(eventCode, addonName)
 	
 	EVENT_MANAGER:UnregisterForEvent(MultiCraftAddon.name .. 'loaded', EVENT_ADD_ON_LOADED)
 end
+
+local function CommandHandler(text)
+	local input = string.lower(text)
+	local cmd = {}
+	local index = 1
+
+	if input ~= nil then
+		for value in string.gmatch(input,"%w+") do  
+			  cmd[index] = value
+				index = index + 1
+			end
+		end
+
+	if cmd[1] == 'toggle' then
+		ToggleSliderDefault()
+		MultiCraftAddon:ResetSlider()
+	elseif cmd[1] == "trait" then
+		ToggleTraits()
+		MultiCraftAddon:ResetSlider()
+	else
+		d(SI.get(SI.USAGE_1))
+		d(SI.get(SI.USAGE_2))
+		d(SI.get(SI.USAGE_3))
+	end
+end
+
+SLASH_COMMANDS["/mc"] = CommandHandler
+SLASH_COMMANDS["/multicraft"] = CommandHandler
 
 EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'loaded', EVENT_ADD_ON_LOADED, Initialize)

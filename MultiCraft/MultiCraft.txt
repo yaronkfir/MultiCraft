@@ -2,7 +2,9 @@
 ## Description: Allows crafting of multiple items with one click
 ## Author: DonutEnigma
 ## APIVersion: 100003
-## Version: 1.1
+## Version: 1.2
+## SavedVariables: MultiCraftSV
 
 MultiCraft.lua
 MultiCraft.xml
+localization/$(language).lua
