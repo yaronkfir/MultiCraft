@@ -2,7 +2,7 @@ local SI = {}
 if MultiCraftAddon == nil then MultiCraftAddon = {} end
 
 MultiCraftAddon.name = "MultiCraft"
-MultiCraftAddon.version = 1.2
+MultiCraftAddon.version = 1.3
 
 MultiCraftAddon.debug = false
 
