@@ -1,12 +1,12 @@
 local mkstr = ZO_CreateStringId
 local SI = MultiCraftAddon.SI
 
-mkstr(SI.USAGE_1,			"MultiCraft Usage:")
-mkstr(SI.USAGE_2,			"/toggle: Toggle slider defaults between 1 and max. Default is 1.")
-mkstr(SI.USAGE_3,			"/trait: Toggle whether using traits allows crafting multiple items. Default is enabled.")
-mkstr(SI.USAGE_4,			"/delay N: This delays all crafting calls by the specified value in milliseconds. Default is 500.")
-mkstr(SI.DEFAULT_MAX,		"MultiCraft: Slider defaults to max")
-mkstr(SI.DEFAULT_MIN,		"MultiCraft: Slider defaults to 1")
-mkstr(SI.TRAITS_ON,			"MultiCraft: Traits enabled")
-mkstr(SI.TRAITS_OFF,		"MultiCraft: Traits disabled")
-mkstr(SI.CALL_DELAY,		"MultiCraft: Crafting rate limited to one call every %d milliseconds")
+mkstr(SI.USAGE_1,			"MultiCraft Benutzung:")
+mkstr(SI.USAGE_2,			"/toggle: Schaltet den Standard des Reglers zwischen 1 und Max um. Standard ist 1.")
+mkstr(SI.USAGE_3,			"/trait: Schaltet um ob die mehrfache Herstellung von Items mit Eigenschaften erlaubt ist. Standard ist aktiviert.")
+mkstr(SI.USAGE_4,			"/delay N: Verzögert alle Handwerksaktivitäten um den angegebenen Wert in Millisekunden. Standard ist 500.")
+mkstr(SI.DEFAULT_MAX,		"MultiCraft: Reglerstandard ist jetzt Max")
+mkstr(SI.DEFAULT_MIN,		"MultiCraft: Reglerstandard ist jetzt 1")
+mkstr(SI.TRAITS_ON,			"MultiCraft: Eigenschaften aktiviert")
+mkstr(SI.TRAITS_OFF,		"MultiCraft: Eigenschaften deaktiviert")
+mkstr(SI.CALL_DELAY,		"MultiCraft: Handwerksaktivitäten limitiert auf einen Aufruf alle %d Millisekunden")
