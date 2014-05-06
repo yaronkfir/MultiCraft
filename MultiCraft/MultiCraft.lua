@@ -2,7 +2,7 @@ local SI = {}
 if MultiCraftAddon == nil then MultiCraftAddon = {} end
 
 MultiCraftAddon.name = "MultiCraft"
-MultiCraftAddon.version = 1.3
+MultiCraftAddon.version = 1.4
 
 MultiCraftAddon.debug = false
 
@@ -42,75 +42,16 @@ MultiCraftAddon.repetitions = 1
 MultiCraftAddon.sliderValue = 1
 MultiCraftAddon.isWorking = false
 
-MultiCraftAddon.provisioner = {
-	en = {
-		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 148, y = -12}
-	},
-	de = {
-		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 176, y = -12}
-	},
-	fr = {
-		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 174, y = -12}
-	}
-}
-
-MultiCraftAddon.alchemy = {
-	en = {
-		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 272, y = -12}
-	},
-	de = {
-		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 331, y = -12}
-	},
-	fr = {
-		[MultiCraftAddon.GENERAL_MODE_CREATION] = {x = 328, y = -12}
-	}
-}
-
-MultiCraftAddon.enchanting = {
-	en = {
-		[MultiCraftAddon.ENCHANTING_MODE_CREATION] = {x = 272, y = -12},
-		[MultiCraftAddon.ENCHANTING_MODE_EXTRACTION] = {x = 284, y = -12}
-	},
-	de = {
-		[MultiCraftAddon.ENCHANTING_MODE_CREATION] = {x = 331, y = -12},
-		[MultiCraftAddon.ENCHANTING_MODE_EXTRACTION] = {x = 331, y = -12}
-	},
-	fr = {
-		[MultiCraftAddon.ENCHANTING_MODE_CREATION] = {x = 328, y = -12},
-		[MultiCraftAddon.ENCHANTING_MODE_EXTRACTION] = {x = 318, y = -12}
-	}
-}
-
-MultiCraftAddon.smithing = {
-	en = {
-		[MultiCraftAddon.SMITHING_MODE_REFINEMENT] = {x = 280, y = -12},
-		[MultiCraftAddon.SMITHING_MODE_CREATION] = {x = 148, y = -12},
-		[MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION] = {x = 310, y = -12}
-	},
-	de = {
-		[MultiCraftAddon.SMITHING_MODE_REFINEMENT] = {x = 324, y = -12},
-		[MultiCraftAddon.SMITHING_MODE_CREATION] = {x = 176, y = -12},
-		[MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION] = {x = 331, y = -12}
-	},
-	fr = {
-		[MultiCraftAddon.SMITHING_MODE_REFINEMENT] = {x = 320, y = -12},
-		[MultiCraftAddon.SMITHING_MODE_CREATION] = {x = 174, y = -12},
-		[MultiCraftAddon.SMITHING_MODE_DECONSTRUCTION] = {x = 344, y = -12}
-	}
-}
-
+MultiCraftAddon.provisioner = {}
+MultiCraftAddon.enchanting = {}
+MultiCraftAddon.alchemy = {}
+MultiCraftAddon.smithing = {}
 MultiCraftAddon.selectedCraft = nil 	-- this will hold a pointer to the currently open crafting station
 
 local function Debug(message)
 	if MultiCraftAddon.debug then
 		d(message)
 	end
-end
-
-local function GetClientLanguage()
-	local language = GetCVar("language.2")
-	if MultiCraftAddon.selectedCraft[language] then return language end
-	return "en"
 end
 
 local function ToggleSliderDefault()
@@ -154,7 +95,6 @@ function MultiCraftAddon.SelectCraftingSkill(eventId, craftingType, sameStation)
 		Debug("Selected Smithing")
 	end
 	
-	MultiCraftAddon:SetLabelAnchor()
 	MultiCraftAddon:ResetSlider()
 end
 
@@ -197,22 +137,26 @@ function MultiCraftAddon:EnableOrDisableUI()
 	MultiCraft:SetHidden(hidden)
 end
 
-function MultiCraftAddon:SetLabelAnchor()
-	if not MultiCraftAddon.selectedCraft then return end
-	MultiCraftLabel:ClearAnchors()
-	
-	local language = GetClientLanguage()
-	local mode = MultiCraftAddon.selectedCraft:GetMode()
-	
-	if MultiCraftAddon.selectedCraft[language][mode] then
-		MultiCraftLabel:SetAnchor(BOTTOMLEFT, MultiCraft, nil, MultiCraftAddon.selectedCraft[language][mode].x, MultiCraftAddon.selectedCraft[language][mode].y)
-	end
-end
-
-function MultiCraftAddon.SetLabelAndValue(...)
+function MultiCraftAddon.SetSliderValueAndKeybind()
 	MultiCraftAddon.sliderValue = zo_floor(MultiCraftSlider:GetValue())
+	if MultiCraftAddon.sliderValue == 0 then
+		-- when opening the window for the first time with nothing selected, sometimes the slider value will be 0
+		-- protect against this by forcing 1
+		MultiCraftAddon.sliderValue = 1
+	end
+	
 	Debug("sliderValue = " .. tostring(MultiCraftAddon.sliderValue))
-	MultiCraftLabel:SetText(string.format("%d", MultiCraftAddon.sliderValue))
+	
+	if MultiCraftAddon.selectedCraft:GetSecondaryKeybindStripDescriptor().visible() then
+		local keybindUpdateDescriptor = {
+			alignment = KEYBIND_STRIP_ALIGN_CENTER,
+			name = MultiCraftAddon.selectedCraft:GetSecondaryKeybindStripDescriptor().name().." "..MultiCraftAddon.sliderValue,
+			keybind = "UI_SHORTCUT_SECONDARY",
+			callback = MultiCraftAddon.selectedCraft:GetSecondaryKeybindStripDescriptor().callback,
+		}
+		
+		KEYBIND_STRIP:UpdateKeybindButton(keybindUpdateDescriptor)
+	end
 end
 
 function MultiCraftAddon:ResetSlider()
@@ -303,6 +247,8 @@ function MultiCraftAddon:ResetSlider()
 	else
 		MultiCraftSlider:SetValue(1)
 	end
+	
+	MultiCraftAddon.SetSliderValueAndKeybind()
 end
 
 function MultiCraftAddon:Work(workFunc)
@@ -310,7 +256,7 @@ function MultiCraftAddon:Work(workFunc)
 	
 	if not MultiCraftAddon.isWorking then
 		MultiCraftAddon.isWorking = true
-		EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'CraftComplete', EVENT_CRAFT_COMPLETED, function() MultiCraftAddon:ContinueWork(workFunc) end)
+		EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name, EVENT_CRAFT_COMPLETED, function() MultiCraftAddon:ContinueWork(workFunc) end)
 		MultiCraftAddon.repetitions = MultiCraftAddon.sliderValue - 1
 	end
 end
@@ -322,7 +268,7 @@ function MultiCraftAddon:ContinueWork(workFunc)
 		MultiCraftAddon.repetitions = MultiCraftAddon.repetitions - 1
 		zo_callLater(workFunc, MultiCraftAddon.settings.callDelay)
 	else
-		EVENT_MANAGER:UnregisterForEvent(MultiCraftAddon.name .. 'CraftComplete', EVENT_CRAFT_COMPLETED)
+		EVENT_MANAGER:UnregisterForEvent(MultiCraftAddon.name, EVENT_CRAFT_COMPLETED)
 		MultiCraftAddon.isWorking = false
 		MultiCraftAddon:ResetSlider()
 	end
@@ -332,9 +278,9 @@ local function Initialize(eventCode, addonName)
 	if addonName ~= MultiCraftAddon.name then return end
 	MultiCraftAddon.settings = ZO_SavedVars:NewAccountWide(MultiCraftAddon.name .. 'SV', 1, nil, MultiCraftAddon.settings)
 	
-	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'Interact',		EVENT_CRAFTING_STATION_INTERACT, 		MultiCraftAddon.SelectCraftingSkill)
-	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'Craft',			EVENT_CRAFT_STARTED, 					MultiCraftAddon.HideUI)
-	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'EndInteract', 	EVENT_END_CRAFTING_STATION_INTERACT, 	MultiCraftAddon.Cleanup)
+	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name,	EVENT_CRAFTING_STATION_INTERACT, 		MultiCraftAddon.SelectCraftingSkill)
+	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name,	EVENT_CRAFT_STARTED, 					MultiCraftAddon.HideUI)
+	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name, 	EVENT_END_CRAFTING_STATION_INTERACT, 	MultiCraftAddon.Cleanup)
 	
 	-- Set up function overrides
 	-- Provisioner
@@ -350,13 +296,18 @@ local function Initialize(eventCode, addonName)
 	end
 	
 	-- for polymorphism
-	MultiCraftAddon.provisioner.GetMode = function(...)
+	MultiCraftAddon.provisioner.GetMode = function()
 		return MultiCraftAddon.GENERAL_MODE_CREATION
 	end
 	
 	-- wrapper to check if an item is craftable
-	MultiCraftAddon.provisioner.IsCraftable = function(...)
+	MultiCraftAddon.provisioner.IsCraftable = function()
 		return PROVISIONER:IsCraftable()
+	end
+	
+	-- wrapper to get the keybind descriptor for the craft button
+	MultiCraftAddon.provisioner.GetSecondaryKeybindStripDescriptor = function()
+		return PROVISIONER.keybindStripDescriptor[1]
 	end
 	
 	-- Enchanting
@@ -364,12 +315,11 @@ local function Initialize(eventCode, addonName)
 	MultiCraftAddon.enchanting.SetEnchantingMode = ENCHANTING.SetEnchantingMode
 	ENCHANTING.SetEnchantingMode = function(...)
 		MultiCraftAddon.enchanting.SetEnchantingMode(...)
-		MultiCraftAddon:SetLabelAnchor()
 		MultiCraftAddon:ResetSlider()
 	end
 	
 	-- for polymorphism
-	MultiCraftAddon.enchanting.GetMode = function(...)
+	MultiCraftAddon.enchanting.GetMode = function()
 		return ENCHANTING:GetEnchantingMode()
 	end
 	
@@ -391,13 +341,18 @@ local function Initialize(eventCode, addonName)
 	MultiCraftAddon.enchanting.Create = function()
 		ENCHANTING:Create()
 	end
-		
+	
 	-- wrapper to check if an item is craftable
-	MultiCraftAddon.enchanting.IsCraftable = function(...)
+	MultiCraftAddon.enchanting.IsCraftable = function()
 		return ENCHANTING:IsCraftable()
 	end
 	
 	MultiCraftAddon.enchanting.IsExtractable = MultiCraftAddon.enchanting.IsCraftable
+	
+	-- wrapper to get the keybind descriptor for the craft button
+	MultiCraftAddon.enchanting.GetSecondaryKeybindStripDescriptor = function()
+		return ENCHANTING.keybindStripDescriptor[2]
+	end
 	
 	-- Alchemy
 	-- selection change
@@ -413,13 +368,18 @@ local function Initialize(eventCode, addonName)
 	end
 	
 	-- for polymorphism
-	MultiCraftAddon.alchemy.GetMode = function(...)
+	MultiCraftAddon.alchemy.GetMode = function()
 		return MultiCraftAddon.GENERAL_MODE_CREATION
 	end
 	
 	-- wrapper to check if an item is craftable
-	MultiCraftAddon.alchemy.IsCraftable = function(...)
+	MultiCraftAddon.alchemy.IsCraftable = function()
 		return ALCHEMY:IsCraftable()
+	end
+	
+	-- wrapper to get the keybind descriptor for the craft button
+	MultiCraftAddon.alchemy.GetSecondaryKeybindStripDescriptor = function()
+		return ALCHEMY.keybindStripDescriptor[2]
 	end
 	
 	-- Smithing
@@ -427,12 +387,11 @@ local function Initialize(eventCode, addonName)
 	MultiCraftAddon.smithing.SetMode = SMITHING.SetMode
 	SMITHING.SetMode = function(...)
 		MultiCraftAddon.smithing.SetMode(...)
-		MultiCraftAddon:SetLabelAnchor()
 		MultiCraftAddon:ResetSlider()
 	end
 	
 	-- for polymorphism
-	MultiCraftAddon.smithing.GetMode = function(...)
+	MultiCraftAddon.smithing.GetMode = function()
 		return SMITHING.mode
 	end
 	
@@ -454,10 +413,9 @@ local function Initialize(eventCode, addonName)
 	MultiCraftAddon.smithing.Create = function()
 		SMITHING.creationPanel:Create()
 	end
-	
-		
+			
 	-- wrapper to check if an item is craftable
-	MultiCraftAddon.smithing.IsCraftable = function(...)
+	MultiCraftAddon.smithing.IsCraftable = function()
 		return SMITHING.creationPanel:IsCraftable()
 	end
 		
@@ -468,7 +426,7 @@ local function Initialize(eventCode, addonName)
 
 		
 	-- wrapper to check if an item is deconstructable
-	MultiCraftAddon.smithing.IsDeconstructable = function(...)
+	MultiCraftAddon.smithing.IsDeconstructable = function()
 		return SMITHING.deconstructionPanel:IsExtractable()
 	end
 	
@@ -478,8 +436,13 @@ local function Initialize(eventCode, addonName)
 	end
 	
 	-- wrapper to check if an item is refinable
-	MultiCraftAddon.smithing.IsExtractable = function(...)
+	MultiCraftAddon.smithing.IsExtractable = function()
 		return SMITHING.refinementPanel:IsExtractable()
+	end
+	
+	-- wrapper to get the keybind descriptor for the craft button
+	MultiCraftAddon.smithing.GetSecondaryKeybindStripDescriptor = function()
+		return SMITHING.keybindStripDescriptor[2]
 	end
 
 	-- hook everything up
@@ -491,9 +454,9 @@ local function Initialize(eventCode, addonName)
 	ZO_PreHook(SMITHING.refinementPanel, 'Extract', function() MultiCraftAddon:Work(MultiCraftAddon.smithing.Extract) end)
 	
 	-- slider
-	MultiCraftSlider:SetHandler("OnValueChanged", MultiCraftAddon.SetLabelAndValue)
+	MultiCraftSlider:SetHandler("OnValueChanged", MultiCraftAddon.SetSliderValueAndKeybind)
 	
-	EVENT_MANAGER:UnregisterForEvent(MultiCraftAddon.name .. 'loaded', EVENT_ADD_ON_LOADED)
+	EVENT_MANAGER:UnregisterForEvent(MultiCraftAddon.name, EVENT_ADD_ON_LOADED)
 end
 
 local function CommandHandler(text)
@@ -530,4 +493,4 @@ end
 SLASH_COMMANDS["/mc"] = CommandHandler
 SLASH_COMMANDS["/multicraft"] = CommandHandler
 
-EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'loaded', EVENT_ADD_ON_LOADED, Initialize)
+EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name, EVENT_ADD_ON_LOADED, Initialize)
