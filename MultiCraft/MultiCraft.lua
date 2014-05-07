@@ -2,7 +2,7 @@ local SI = {}
 if MultiCraftAddon == nil then MultiCraftAddon = {} end
 
 MultiCraftAddon.name = "MultiCraft"
-MultiCraftAddon.version = 1.4
+MultiCraftAddon.version = "1.4.1"
 
 MultiCraftAddon.debug = false
 
@@ -105,6 +105,7 @@ end
 function MultiCraftAddon.Cleanup(...)
 	MultiCraftAddon.HideUI(...)
 	MultiCraftAddon.selectedCraft = nil
+	MultiCraftAddon.isWorking = false
 	Debug("Cleaned")
 end
 
@@ -254,9 +255,9 @@ end
 function MultiCraftAddon:Work(workFunc)
 	Debug("work called")
 	
-	if not MultiCraftAddon.isWorking then
+	if MultiCraftAddon.selectedCraft and not MultiCraftAddon.isWorking then
 		MultiCraftAddon.isWorking = true
-		EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name, EVENT_CRAFT_COMPLETED, function() MultiCraftAddon:ContinueWork(workFunc) end)
+		EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'CraftComplete', EVENT_CRAFT_COMPLETED, function() MultiCraftAddon:ContinueWork(workFunc) end)
 		MultiCraftAddon.repetitions = MultiCraftAddon.sliderValue - 1
 	end
 end
@@ -268,7 +269,7 @@ function MultiCraftAddon:ContinueWork(workFunc)
 		MultiCraftAddon.repetitions = MultiCraftAddon.repetitions - 1
 		zo_callLater(workFunc, MultiCraftAddon.settings.callDelay)
 	else
-		EVENT_MANAGER:UnregisterForEvent(MultiCraftAddon.name, EVENT_CRAFT_COMPLETED)
+		EVENT_MANAGER:UnregisterForEvent(MultiCraftAddon.name .. 'CraftComplete', EVENT_CRAFT_COMPLETED)
 		MultiCraftAddon.isWorking = false
 		MultiCraftAddon:ResetSlider()
 	end
@@ -278,9 +279,9 @@ local function Initialize(eventCode, addonName)
 	if addonName ~= MultiCraftAddon.name then return end
 	MultiCraftAddon.settings = ZO_SavedVars:NewAccountWide(MultiCraftAddon.name .. 'SV', 1, nil, MultiCraftAddon.settings)
 	
-	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name,	EVENT_CRAFTING_STATION_INTERACT, 		MultiCraftAddon.SelectCraftingSkill)
-	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name,	EVENT_CRAFT_STARTED, 					MultiCraftAddon.HideUI)
-	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name, 	EVENT_END_CRAFTING_STATION_INTERACT, 	MultiCraftAddon.Cleanup)
+	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'Interact',		EVENT_CRAFTING_STATION_INTERACT, 		MultiCraftAddon.SelectCraftingSkill)
+	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'Craft',			EVENT_CRAFT_STARTED, 					MultiCraftAddon.HideUI)
+	EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'EndInteract', 	EVENT_END_CRAFTING_STATION_INTERACT, 	MultiCraftAddon.Cleanup)
 	
 	-- Set up function overrides
 	-- Provisioner
@@ -456,7 +457,7 @@ local function Initialize(eventCode, addonName)
 	-- slider
 	MultiCraftSlider:SetHandler("OnValueChanged", MultiCraftAddon.SetSliderValueAndKeybind)
 	
-	EVENT_MANAGER:UnregisterForEvent(MultiCraftAddon.name, EVENT_ADD_ON_LOADED)
+	EVENT_MANAGER:UnregisterForEvent(MultiCraftAddon.name .. 'loaded', EVENT_ADD_ON_LOADED)
 end
 
 local function CommandHandler(text)
@@ -493,4 +494,4 @@ end
 SLASH_COMMANDS["/mc"] = CommandHandler
 SLASH_COMMANDS["/multicraft"] = CommandHandler
 
-EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name, EVENT_ADD_ON_LOADED, Initialize)
+EVENT_MANAGER:RegisterForEvent(MultiCraftAddon.name .. 'loaded', EVENT_ADD_ON_LOADED, Initialize)
