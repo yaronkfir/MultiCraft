@@ -2,7 +2,7 @@ local SI = {}
 if MultiCraftAddon == nil then MultiCraftAddon = {} end
 
 MultiCraftAddon.name = "MultiCraft"
-MultiCraftAddon.version = "1.4.2"
+MultiCraftAddon.version = "1.4.3"
 
 MultiCraftAddon.debug = false
 
@@ -177,14 +177,12 @@ function MultiCraftAddon:ResetSlider()
 		if mode == MultiCraftAddon.ENCHANTING_MODE_CREATION then
 			if MultiCraftAddon.selectedCraft:IsCraftable() then
 				for k, v in pairs(ENCHANTING.runeSlots) do
-					if v:MeetsUsabilityRequirement() then
-						if k == 1 then
-							numCraftable = v.craftingInventory.itemCounts[v.itemInstanceId]
-						else 
-							numCraftable = zo_min(numCraftable, v.craftingInventory.itemCounts[v.itemInstanceId])
-						end
-						Debug("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
+					if k == 1 then
+						numCraftable = v.craftingInventory.itemCounts[v.itemInstanceId]
+					else 
+						numCraftable = zo_min(numCraftable, v.craftingInventory.itemCounts[v.itemInstanceId])
 					end
+					Debug("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
 				end			
 			end
 		elseif mode == MultiCraftAddon.ENCHANTING_MODE_EXTRACTION then
@@ -196,9 +194,11 @@ function MultiCraftAddon:ResetSlider()
 		if MultiCraftAddon.selectedCraft:IsCraftable() then
 			numCraftable = ALCHEMY.solventSlot.craftingInventory.itemCounts[ALCHEMY.solventSlot.itemInstanceId]
 			for k, v in pairs(ALCHEMY.reagentSlots) do
-				if v.craftingInventory.itemCounts[v.itemInstanceId] ~= nil then
-					numCraftable = zo_min(numCraftable, v.craftingInventory.itemCounts[v.itemInstanceId])
-					Debug("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
+				if v:MeetsUsabilityRequirement() then			
+					if v.craftingInventory.itemCounts[v.itemInstanceId] ~= nil then
+						numCraftable = zo_min(numCraftable, v.craftingInventory.itemCounts[v.itemInstanceId])
+						Debug("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
+					end
 				end
 			end
 		end
