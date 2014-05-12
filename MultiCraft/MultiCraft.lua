@@ -2,7 +2,7 @@ local SI = {}
 if MultiCraftAddon == nil then MultiCraftAddon = {} end
 
 MultiCraftAddon.name = "MultiCraft"
-MultiCraftAddon.version = "1.4.1"
+MultiCraftAddon.version = "1.4.2"
 
 MultiCraftAddon.debug = false
 
@@ -177,12 +177,14 @@ function MultiCraftAddon:ResetSlider()
 		if mode == MultiCraftAddon.ENCHANTING_MODE_CREATION then
 			if MultiCraftAddon.selectedCraft:IsCraftable() then
 				for k, v in pairs(ENCHANTING.runeSlots) do
-					if k == 1 then
-						numCraftable = v.craftingInventory.itemCounts[v.itemInstanceId]
-					else 
-						numCraftable = zo_min(numCraftable, v.craftingInventory.itemCounts[v.itemInstanceId])
+					if v:MeetsUsabilityRequirement() then
+						if k == 1 then
+							numCraftable = v.craftingInventory.itemCounts[v.itemInstanceId]
+						else 
+							numCraftable = zo_min(numCraftable, v.craftingInventory.itemCounts[v.itemInstanceId])
+						end
+						Debug("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
 					end
-					Debug("in for numCraftable = " .. tostring(zo_floor(numCraftable)))
 				end			
 			end
 		elseif mode == MultiCraftAddon.ENCHANTING_MODE_EXTRACTION then
